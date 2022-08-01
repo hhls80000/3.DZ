@@ -1,5 +1,3 @@
-# 3.DZ
-
 <template>
   <div id="app">
     <div id="main">
@@ -10,7 +8,11 @@
         </div>
       </header>
       <main class="content" ref="record">
-        <div class="msgLi" v-for="item in msgList" :key="item.message">
+        <div
+          class="msgLi"
+          v-for="item in msgList"
+          :key="item.message[0].id ? item.message.id : item.message"
+        >
           <dd :class="'img' + (item.isSelf ? 'Right' : 'Left')">
             <i class="i">
               <img
@@ -58,19 +60,70 @@
           <el-dialog
             title="留言"
             :visible.sync="dialogVisible"
-            width="50%"
+            width="40%"
             :append-to-body="true"
           >
-            <div>
-              <el-form ref="form" :model="form" label-width="80px" @submit.native.prevent>
-                <el-form-item label="活动名称">
-                  <el-input v-model="form.name"></el-input>
+            <div class="dialog">
+              <div style="margin: 20px">
+                <p>您好！</p>
+                <p>未能快速解决您的问题我们深表歉意。</p>
+                <p>请您留下您的联系方式，后续有专业人员回复您的问题。</p>
+              </div>
+              <el-form
+                :label-position="labelPosition"
+                label-width="80px"
+                :model="ruleForm"
+                :rules="rules"
+                ref="ruleForm"
+              >
+                <el-form-item label="姓名" prop="name">
+                  <el-input
+                    v-model="ruleForm.name"
+                    placeholder="姓名"
+                  ></el-input>
+                </el-form-item>
+                <el-form-item label="联系电话" prop="num">
+                  <el-input
+                    v-model="ruleForm.num"
+                    placeholder="手机号或者固定电话号码"
+                  ></el-input>
+                </el-form-item>
+                <el-form-item label="邮箱地址" prop="email">
+                  <el-input
+                    v-model="ruleForm.email"
+                    placeholder="邮箱地址如: xxxxx@163.com"
+                  ></el-input>
+                </el-form-item>
+                <el-form-item label="问题概述" prop="desc">
+                  <el-input
+                    rows="4"
+                    type="textarea"
+                    v-model="ruleForm.desc"
+                    placeholder="请简单描述一下您遇到的问题"
+                  ></el-input>
+                </el-form-item>
+                <el-form-item label="附件">
+                  <el-upload
+                    class="upload-demo"
+                    action="https://jsonplaceholder.typicode.com/posts/"
+                    :on-preview="handlePreview"
+                    :on-remove="handleRemove"
+                    :file-list="fileList"
+                    list-type="picture"
+                  >
+                    <el-button size="small" type="primary">点击上传</el-button>
+                    <div slot="tip" class="el-upload__tip">
+                      只能上传jpg/png/gif文件，且每张图片不超过2M
+                    </div>
+                  </el-upload>
                 </el-form-item>
               </el-form>
             </div>
             <span slot="footer" class="dialog-footer">
-              <el-button @click="dialogVisible = false">取 消</el-button>
-              <el-button type="primary" @click="dialogVisible = false"
+              <el-button @click="cancelForm('ruleForm')">取 消</el-button>
+              <el-button
+                type="primary"
+                @click="submitForm('ruleForm', ruleForm)"
                 >确 定</el-button
               >
             </span>
@@ -121,8 +174,63 @@ export default {
       texts: ["非常不满意", "不满意", "一般满意", "满意", "非常满意"],
       rateValue: null,
       labelPosition: "right",
-      form: {
-        name: "活动名称",
+      ruleForm: {
+        name: "",
+        num: "",
+        desc: "",
+        email: "",
+      },
+      fileList: [],
+      rules: {
+        name: [
+          { required: true, message: "请输入姓名", trigger: "blur" },
+          {
+            validator: function (rule, value, callback) {
+              if (!value.trim()) {
+                callback(new Error("请输入正确的姓名"));
+              } else {
+                callback();
+              }
+            },
+            trigger: "blur",
+          },
+        ],
+        num: [
+          {
+            message: "请输入手机号或电话号码",
+            trigger: "blur",
+          },
+          {
+            validator: function (rule, value, callback) {
+              if (
+                /^1[34578]\d{9}$/.test(value) == false &&
+                /^(\d{3,4}-)?\d{7,8}$/.test(value) == false
+              ) {
+                callback(new Error("请输入正确的手机号或座机号"));
+              } else {
+                callback();
+              }
+            },
+            trigger: "blur",
+          },
+        ],
+        email: [
+          { type: "email", message: "请输入正确的邮箱地址", trigger: "change" },
+        ],
+        desc: [
+          { required: true, message: "请输入问题", trigger: "blur" },
+          {
+            validator: function (rule, value, callback) {
+              if (!value.trim()) {
+                callback(new Error("请输入问题"));
+              } else {
+                callback();
+              }
+            },
+            trigger: "blur",
+          },
+        ],
+        picture: [{ message: "请输入正确的邮箱地址", trigger: "change" }],
       },
     };
   },
@@ -147,9 +255,8 @@ export default {
   },
   //在生命周期updated时，改变并且要在页面重新渲染完成之后
   updated() {
-    //     另有一条需要特别注意的地方，注意查看信息调用的接口刷新频率，在接口刷新时，消息列表也会随之刷新，并伴随产生一个小bug就是如果想往回翻看聊天记录的话，接口一刷新进度条就会回到最底部！！！！！！！！！！！！！！！！！！！！！！！！
+    //  另有一条需要特别注意的地方，注意查看信息调用的接口刷新频率，在接口刷新时，消息列表也会随之刷新，并伴随产生一个小bug就是如果想往回翻看聊天记录的话，接口一刷新进度条就会回到最底部！！！！！！！！！！！！！！！！！！！！！！！！
     // 一般这种事情都是后端解决，如果遇到这种问题可以让后端修改一下即可
-
     this.$nextTick(() => {
       if (this.isNull(this.input)) {
         this.disabled = false;
@@ -161,15 +268,15 @@ export default {
   },
   methods: {
     // 获取初始数据
-    getrobotMsgJson() {
+    async getrobotMsgJson() {
       try {
         if (robotMsgJson.code == "200") {
-          let list = this._.cloneDeep(robotMsgJson.list);
+          let list = await this._.cloneDeep(robotMsgJson.list);
           for (let i = 0; i < list.length; i++) {
             list[i].subList = this._.flatten(list[i].subList);
           }
           this.pushMsgList(list);
-          console.log(list);
+          // console.log(list);
         }
       } catch (error) {
         console.log("Request Failed", error);
@@ -178,7 +285,7 @@ export default {
 
     //树形控件点击事件
     handleNodeClick(data) {
-      console.log(data);
+      // console.log(data);
       if (data.parentId) {
         let msg = data.comQuestion;
         let msgs = data.comAnswer;
@@ -187,9 +294,10 @@ export default {
         this.pushMsgList(msgs);
       }
     },
+
     //发送按钮事件
     sendSelfMsg() {
-      console.log(this.input);
+      // console.log(this.input);
       let msg = this.input;
       let aa = true;
       this.pushMsgList(msg, aa);
@@ -201,13 +309,14 @@ export default {
     pushMsgList(msg, bar) {
       let buer = bar | false;
       let msgs = msg;
-      console.log(msg);
+      // console.log(msg);
       this.getNowTime();
       this.msgList.push({
         message: msgs,
         isSelf: buer,
       });
     },
+
     //获取当前时间
     getNowTime() {
       let now = new Date();
@@ -239,6 +348,35 @@ export default {
         return false;
       }
       return true;
+    },
+    // 提交表单
+    submitForm(formName, val) {
+      this.$refs[formName].validate((valid) => {
+        if (valid) {
+          console.log(this.ruleForm);
+          alert(val);
+
+          this.$refs[formName].resetFields();
+          this.dialogVisible = false;
+        } else {
+          console.log("error submit!!");
+          return false;
+        }
+      });
+    },
+    // 取消表单
+    cancelForm(formName) {
+      this.$refs[formName].resetFields();
+      this.dialogVisible = false;
+    },
+
+    //上穿文件
+    handleRemove(file, fileList) {
+      console.log(file, fileList);
+    },
+    //文件列表
+    handlePreview(file) {
+      console.log(file);
     },
 
     //对话框事件
@@ -279,6 +417,8 @@ export default {
   background-color: #ddd;
   width: 986px;
   min-width: 986px;
+  min-height: 430px;
+  max-height: 720px;
   transform: translate(-50%, -50%);
   overflow: hidden;
 }
@@ -320,7 +460,8 @@ export default {
   background: #f5f5f5;
   padding-bottom: 20px;
   width: auto;
-  max-height: 320px;
+  /* max-height: 320px; */
+  bottom: 217px;
   box-sizing: border-box;
 }
 
@@ -475,6 +616,14 @@ export default {
   margin-right: 20px;
 }
 
+#main .footer .messageBoard .el-textarea__inner {
+  border: none;
+}
+
+#main .footer .messageBoard .el-textarea__inner .el-textarea__inner:focus {
+  border: none;
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -486,6 +635,21 @@ export default {
   -webkit-border-radius: 3px;
   border-left: 2px solid transparent;
   border-top: 2px solid transparent;
+}
+.dialog {
+  width: 100%;
+}
+
+.el-dialog__wrapper .el-input {
+  width: 50%;
+}
+
+.el-dialog__wrapper .el-textarea {
+  /* width: 70%; */
+}
+
+.el-textarea__inner {
+  resize: none !important;
 }
 
 .el-tree-node__label {
@@ -514,17 +678,6 @@ export default {
 .el-tree-node__content:hover {
   background-color: #fff;
   color: rgb(35, 124, 240);
-}
-
-.el-textarea__inner {
-  resize: none !important;
-  border: none;
-  /* min-height: 80px !important; */
-}
-
-.el-textarea__inner:focus {
-  border: none;
-  /* border-top: solid 2px #ddd; */
 }
 
 .el-tree {
