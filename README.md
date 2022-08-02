@@ -114,6 +114,7 @@
                     :auto-upload="autoUpload"
                     :on-exceed="exceed"
                     multiple
+                    :limit="limit"
                     ref="upload"
                     :before-upload="beforeUpload"
                   >
@@ -164,6 +165,7 @@ export default {
   data() {
     return {
       disabled: true,
+      limit:3,
       autoUpload: false,
       tip: "",
       msgList: [],
@@ -370,32 +372,10 @@ export default {
     },
     //上传之前
     beforeUpload() {
-      this.checkType();
+      // this.checkType();
       // return this.handleChange();
     },
 
-    //检查文件
-    // checkUpload(fileList, num) {
-    //   // const isLt2M = file.size / 1024 / 1024 < 2;
-    //   const arr = ["image/jpg", "image/png", "image/gif"];
-    //   // this.checkType(fileList);
-    //   if (num > 3) {
-    //     this.tip = `<span style="color: red">上传图片不能超过3张</span>`
-    //   }
-
-    //   // if (arr.indexOf(file.type) === -1) {
-    //   //   this.tip = `<span style="color: red">上传图片只能是jpg/png/gif格式!</span>`
-    //   // }
-
-    //   if (!isLt2M) {
-    //     this.tip = `<span style="color: red">上传头像图片大小不能超过 2MB!</span>`
-    //   }
-
-    //   // if (num > 3 && !isLt2M && arr.find(file.type) === -1) {
-    //   //   return false
-    //   // }
-    //   return true
-    // },
     //删除文件列表
     handleRemove(fileList) {
       // console.log(file, fileList);
@@ -409,43 +389,32 @@ export default {
     },
     //改变
     handleChange(file, fileList) {
-      this.fileList = fileList;
-      console.log( this.fileList);
+
+      console.log(fileList.length);
+      // this.fileList = fileList;
       // console.log( this.fileList);
-      this.checkType();
-      console.log(111111);
-      // let num = this.fileList.length;
-      // console.log(this.fileList);
-      // this.checkUpload(fileList, num);
+      // this.checkType();
     },
     //检查上传图片
     checkType() {
       console.log(this.fileList);
-      // if (this.fileList.length > 3) {
-      //   this.checkType(2);
-      //   return false;
-      // }
-      console.log(1111111111);
       for (let index in this.fileList) {
-        console.log(2222222222);
         let extension = this.fileList[index].raw.type
         let size = this.fileList[index].size / 1024 / 1024 < 2;
         /* 验证上传格式  extension后缀名*/
         if (extension !== "image/png" && extension !== "image/jpg" && extension !== "image/gif") {
           this.checkType(0);
-          console.log("image");
           console.log(extension);
           console.log(index);
           return false;
         }
-        if (!size ) {
+        if (!size) {
           // console.log(size);
           this.checkType(1);
           console.log(extension);
           console.log(index);
-          return false;
+          return size;
         }
-        console.log("end");
       }
     },
 
