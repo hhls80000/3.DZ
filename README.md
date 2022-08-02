@@ -108,13 +108,17 @@
                     action="https://jsonplaceholder.typicode.com/posts/"
                     :on-preview="handlePreview"
                     :on-remove="handleRemove"
+                    :on-change="handleChange"
                     :file-list="fileList"
                     list-type="picture"
+                    :auto-upload="autoUpload"
+                    :on-exceed="exceed"
+                    multiple
+                    ref="upload"
+                    :before-upload="beforeUpload"
                   >
                     <el-button size="small" type="primary">点击上传</el-button>
-                    <div slot="tip" class="el-upload__tip">
-                      只能上传jpg/png/gif文件，且每张图片不超过2M
-                    </div>
+                    <div slot="tip" class="el-upload__tip" v-html="tip"></div>
                   </el-upload>
                 </el-form-item>
               </el-form>
@@ -124,7 +128,7 @@
               <el-button
                 type="primary"
                 @click="submitForm('ruleForm', ruleForm)"
-                >确 定</el-button
+                >提 交</el-button
               >
             </span>
           </el-dialog>
@@ -160,6 +164,8 @@ export default {
   data() {
     return {
       disabled: true,
+      autoUpload: false,
+      tip: "",
       msgList: [],
       newData: "",
       value: null,
@@ -234,21 +240,12 @@ export default {
       },
     };
   },
-  watch: {
-    input: {
-      function() {
-        if (this.input.length) {
-          this.disabled = false;
-        } else {
-          this.disabled = true;
-        }
-      },
-    },
-  },
+  watch: {},
   created() {
     let msg = "您好，这里是东芝客服部，我是机器人小芝，很高兴为您服务。";
     this.pushMsgList(msg);
     this.getrobotMsgJson();
+    this.checkText();
   },
   mounted() {
     // console.log(document.querySelector('.content').innerHTML);
@@ -356,27 +353,122 @@ export default {
           console.log(this.ruleForm);
           alert(val);
 
-          this.$refs[formName].resetFields();
-          this.dialogVisible = false;
+          // this.$refs[formName].resetFields();
+          // this.$refs.uploadMutiple.submit();
+          // this.dialogVisible = false;
         } else {
-          console.log("error submit!!");
-          return false;
+          // console.log("error submit!!");
+          // return false;
         }
       });
+      // this.$refs.uploadMutiple.submit();
     },
     // 取消表单
     cancelForm(formName) {
       this.$refs[formName].resetFields();
       this.dialogVisible = false;
     },
+    //上传之前
+    beforeUpload() {
+      this.checkType();
+      // return this.handleChange();
+    },
 
-    //上穿文件
-    handleRemove(file, fileList) {
-      console.log(file, fileList);
+    //检查文件
+    // checkUpload(fileList, num) {
+    //   // const isLt2M = file.size / 1024 / 1024 < 2;
+    //   const arr = ["image/jpg", "image/png", "image/gif"];
+    //   // this.checkType(fileList);
+    //   if (num > 3) {
+    //     this.tip = `<span style="color: red">上传图片不能超过3张</span>`
+    //   }
+
+    //   // if (arr.indexOf(file.type) === -1) {
+    //   //   this.tip = `<span style="color: red">上传图片只能是jpg/png/gif格式!</span>`
+    //   // }
+
+    //   if (!isLt2M) {
+    //     this.tip = `<span style="color: red">上传头像图片大小不能超过 2MB!</span>`
+    //   }
+
+    //   // if (num > 3 && !isLt2M && arr.find(file.type) === -1) {
+    //   //   return false
+    //   // }
+    //   return true
+    // },
+    //删除文件列表
+    handleRemove(fileList) {
+      // console.log(file, fileList);
+      if (fileList.length == 0) {
+        this.checkText();
+      }
     },
     //文件列表
     handlePreview(file) {
       console.log(file);
+    },
+    //改变
+    handleChange(file, fileList) {
+      this.fileList = fileList;
+      console.log( this.fileList);
+      // console.log( this.fileList);
+      this.checkType();
+      console.log(111111);
+      // let num = this.fileList.length;
+      // console.log(this.fileList);
+      // this.checkUpload(fileList, num);
+    },
+    //检查上传图片
+    checkType() {
+      console.log(this.fileList);
+      // if (this.fileList.length > 3) {
+      //   this.checkType(2);
+      //   return false;
+      // }
+      console.log(1111111111);
+      for (let index in this.fileList) {
+        console.log(2222222222);
+        let extension = this.fileList[index].raw.type
+        let size = this.fileList[index].size / 1024 / 1024 < 2;
+        /* 验证上传格式  extension后缀名*/
+        if (extension !== "image/png" && extension !== "image/jpg" && extension !== "image/gif") {
+          this.checkType(0);
+          console.log("image");
+          console.log(extension);
+          console.log(index);
+          return false;
+        }
+        if (!size ) {
+          // console.log(size);
+          this.checkType(1);
+          console.log(extension);
+          console.log(index);
+          return false;
+        }
+        console.log("end");
+      }
+    },
+
+    checkText(val) {
+      switch (val) {
+        case 0:
+          this.tip = `<span style="color: red">上传图片只能是jpg/png/gif格式!</span>`;
+          break;
+        case 1:
+          this.tip = `<span style="color: red">上传图片大小不能超过 2MB!</span>`;
+          break;
+        case 2:
+          this.tip = `<span style="color: red">上传图片不能超过3张</span>`;
+          break;
+        default:
+          this.tip = `<span>只能上传jpg/png/gif文件，每张图片不超过2M,且不能超过3张图</span>`;
+          break;
+      }
+    },
+    //文件超出个数限制时的钩子
+    exceed() {
+      this.checkText(2);
+      return false
     },
 
     //对话框事件
@@ -460,7 +552,7 @@ export default {
   background: #f5f5f5;
   padding-bottom: 20px;
   width: auto;
-  /* max-height: 320px; */
+  max-height: 360px;
   bottom: 217px;
   box-sizing: border-box;
 }
@@ -717,5 +809,10 @@ export default {
   font-size: 13px;
   text-align: center;
   z-index: 99;
+}
+
+.el-dialog__header,
+.el-icon-close:before {
+  color: rgb(177, 177, 177);
 }
 </style>
