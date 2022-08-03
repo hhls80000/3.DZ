@@ -84,12 +84,15 @@
                 </el-form-item>
                 <el-form-item label="联系电话" prop="num">
                   <el-input
+                    @input="clearRule()"
                     v-model="ruleForm.num"
                     placeholder="手机号或者固定电话号码"
-                  ></el-input>
+                  ></el-input
+                  ><span>联系电话和邮箱，至少填写一种</span>
                 </el-form-item>
                 <el-form-item label="邮箱地址" prop="email">
                   <el-input
+                    @input="clearRule()"
                     v-model="ruleForm.email"
                     placeholder="邮箱地址如: xxxxx@163.com"
                   ></el-input>
@@ -106,7 +109,6 @@
                   <el-upload
                     class="upload-demo"
                     action="https://jsonplaceholder.typicode.com/posts/"
-                    :on-preview="handlePreview"
                     :on-remove="handleRemove"
                     :on-change="handleChange"
                     :file-list="fileList"
@@ -165,7 +167,7 @@ export default {
   data() {
     return {
       disabled: true,
-      limit:3,
+      limit: 3,
       autoUpload: false,
       tip: "",
       msgList: [],
@@ -205,25 +207,26 @@ export default {
         ],
         num: [
           {
-            message: "请输入手机号或电话号码",
+            type: "number",
+            message: "请输入正确的手机号或电话号码",
             trigger: "blur",
+            transform: (value) => Number(value),
           },
           {
-            validator: function (rule, value, callback) {
-              if (
-                /^1[34578]\d{9}$/.test(value) == false &&
-                /^(\d{3,4}-)?\d{7,8}$/.test(value) == false
-              ) {
-                callback(new Error("请输入正确的手机号或座机号"));
-              } else {
-                callback();
-              }
-            },
+            validator: this.validateRule,
             trigger: "blur",
           },
         ],
         email: [
-          { type: "email", message: "请输入正确的邮箱地址", trigger: "change" },
+          {
+            type: "email",
+            message: "请输入正确的邮箱地址",
+            trigger: "blur",
+          },
+          {
+            validator: this.validateRule,
+            trigger: "blur",
+          },
         ],
         desc: [
           { required: true, message: "请输入问题", trigger: "blur" },
@@ -237,8 +240,7 @@ export default {
             },
             trigger: "blur",
           },
-        ],
-        picture: [{ message: "请输入正确的邮箱地址", trigger: "change" }],
+        ]
       },
     };
   },
@@ -263,6 +265,7 @@ export default {
         this.disabled = true;
       }
       this.$refs.record.scrollTop = this.$refs.record.scrollHeight;
+      // this.handleChange()
     });
   },
   methods: {
@@ -275,7 +278,6 @@ export default {
             list[i].subList = this._.flatten(list[i].subList);
           }
           this.pushMsgList(list);
-          // console.log(list);
         }
       } catch (error) {
         console.log("Request Failed", error);
@@ -296,7 +298,6 @@ export default {
 
     //发送按钮事件
     sendSelfMsg() {
-      // console.log(this.input);
       let msg = this.input;
       let aa = true;
       this.pushMsgList(msg, aa);
@@ -348,6 +349,22 @@ export default {
       }
       return true;
     },
+
+    //改变状态时动态重置校验规则
+    validateRule(rule, value, callback) {
+      if (!this.ruleForm.num && !this.ruleForm.email) {
+        callback(new Error("电话，邮箱地址，请至少填写一项"));
+      } else {
+        callback();
+        // this.$refs.form.clearValidate();
+      }
+    },
+
+    clearRule() {
+      this.$refs.ruleForm.clearValidate("num");
+      this.$refs.ruleForm.clearValidate("email");
+    },
+
     // 提交表单
     submitForm(formName, val) {
       this.$refs[formName].validate((valid) => {
@@ -368,18 +385,19 @@ export default {
     // 取消表单
     cancelForm(formName) {
       this.$refs[formName].resetFields();
+      this.$refs.upload.clearFiles();
       this.dialogVisible = false;
     },
     //上传之前
     beforeUpload() {
-      // this.checkType();
+      // this.checkText();
       // return this.handleChange();
     },
 
     //删除文件列表
     handleRemove(fileList) {
-      // console.log(file, fileList);
-      if (fileList.length == 0) {
+      this.checkImg(fileList);
+      if (this.fileList.length == 0) {
         this.checkText();
       }
     },
@@ -387,57 +405,70 @@ export default {
     handlePreview(file) {
       console.log(file);
     },
-    //改变
+    //改变文件列表
     handleChange(file, fileList) {
-
-      console.log(fileList.length);
-      // this.fileList = fileList;
-      // console.log( this.fileList);
-      // this.checkType();
+      this.checkText(3);
+      this.fileList = fileList;
+      this.checkType();
+      // console.log(this.fileList);
     },
     //检查上传图片
     checkType() {
-      console.log(this.fileList);
-      for (let index in this.fileList) {
-        let extension = this.fileList[index].raw.type
-        let size = this.fileList[index].size / 1024 / 1024 < 2;
-        /* 验证上传格式  extension后缀名*/
-        if (extension !== "image/png" && extension !== "image/jpg" && extension !== "image/gif") {
-          this.checkType(0);
-          console.log(extension);
-          console.log(index);
+      const whiteList = ["image/png", "image/jpg", "image/gif"];
+      for (const i of this.fileList) {
+        console.log(i.name.substring(i.name.lastIndexOf(".") + 1));
+        let extension = i.raw.type;
+        let size = i.size / 1024 / 1024 < 2;
+        if (whiteList.indexOf(extension) === -1) {
+          this.checkText(0);
+          this.checkImg();
+          // console.log(this.fileList);
           return false;
         }
         if (!size) {
-          // console.log(size);
-          this.checkType(1);
-          console.log(extension);
-          console.log(index);
+          this.checkText(1);
+          this.checkImg();
+          // console.log(this.fileList);
           return size;
         }
       }
     },
+    //检查文件格式不让没通过检测的添加
+    checkImg(i) {
+      if (i) {
+        if (this.fileList.indexOf(i) !== -1) {
+          this.fileList.splice(this.fileList.indexOf(i), 1);
+        }
+      } else {
+        //检查文件格式不让添加
+        this.fileList.splice(0);
+      }
+    },
 
+    //检查文件后的文字提示
     checkText(val) {
       switch (val) {
         case 0:
           this.tip = `<span style="color: red">上传图片只能是jpg/png/gif格式!</span>`;
           break;
         case 1:
-          this.tip = `<span style="color: red">上传图片大小不能超过 2MB!</span>`;
+          this.tip = `<span style="color: red">上传每张图片大小不能超过 2MB!</span>`;
           break;
         case 2:
           this.tip = `<span style="color: red">上传图片不能超过3张</span>`;
           break;
+        case 3:
+          this.tip = ``;
+          break;
         default:
-          this.tip = `<span>只能上传jpg/png/gif文件，每张图片不超过2M,且不能超过3张图</span>`;
+          this.tip = `<span>只能上传jpg/png/gif文件，每张图片不超过2M，且不能超过3张图</span>`;
           break;
       }
     },
     //文件超出个数限制时的钩子
     exceed() {
       this.checkText(2);
-      return false
+      return false;
     },
 
     //对话框事件
