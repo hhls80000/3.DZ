@@ -27,7 +27,19 @@
             <div class="msgBox">
               <p :class="'send' + (item.isSelf ? 'Right' : 'Left')">
                 {{ item.isSelf ? " " : "东芝客服-小芝" }}
-                <span v-once>{{ nowTime }}</span>
+                <span v-once>{{
+                  (nowTime.getHours() >= 10
+                    ? nowTime.getHours()
+                    : "0" + nowTime.getHours()) +
+                  ":" +
+                  (nowTime.getMinutes() >= 10
+                    ? nowTime.getMinutes()
+                    : "0" + nowTime.getMinutes()) +
+                  ":" +
+                  (nowTime.getSeconds() >= 10
+                    ? nowTime.getSeconds()
+                    : "0" + nowTime.getSeconds())
+                }}</span>
               </p>
               <span
                 id="msgSpan"
@@ -108,17 +120,17 @@
                 <el-form-item label="附件">
                   <el-upload
                     class="upload-demo"
-                    action="https://jsonplaceholder.typicode.com/posts/"
-                    :on-remove="handleRemove"
-                    :on-change="handleChange"
+                    action=""
                     :file-list="fileList"
                     list-type="picture"
                     :auto-upload="autoUpload"
-                    :on-exceed="exceed"
                     multiple
                     :limit="limit"
+                    :http-request="uploadFile"
+                    :on-remove="handleRemove"
+                    :on-change="handleChange"
+                    :on-exceed="exceed"
                     ref="upload"
-                    :before-upload="beforeUpload"
                   >
                     <el-button size="small" type="primary">点击上传</el-button>
                     <div slot="tip" class="el-upload__tip" v-html="tip"></div>
@@ -128,16 +140,20 @@
             </div>
             <span slot="footer" class="dialog-footer">
               <el-button @click="cancelForm('ruleForm')">取 消</el-button>
-              <el-button
-                type="primary"
-                @click="submitForm('ruleForm', ruleForm)"
+              <el-button type="primary" @click="submitForm('ruleForm')"
                 >提 交</el-button
               >
             </span>
           </el-dialog>
           <div class="evaluation">
             <p>您对机器人的评价?</p>
-            <el-rate v-model="rateValue" :texts="texts" show-text> </el-rate>
+            <el-rate
+              :change="sendRate(rateValue)"
+              v-model="rateValue"
+              :texts="texts"
+              show-text
+            >
+            </el-rate>
           </div>
         </div>
         <div class="messageBoard">
@@ -160,8 +176,6 @@
 </template>
 
 <script>
-import robotMsgJson from "@/api/robotMsg.json";
-
 export default {
   name: "App",
   data() {
@@ -180,7 +194,7 @@ export default {
       input: "",
       dialogVisible: false,
       formLabelWidth: "120px",
-      nowTime: "",
+      nowTime: new Date(),
       texts: ["非常不满意", "不满意", "一般满意", "满意", "非常满意"],
       rateValue: null,
       labelPosition: "right",
@@ -240,7 +254,7 @@ export default {
             },
             trigger: "blur",
           },
-        ]
+        ],
       },
     };
   },
@@ -248,7 +262,7 @@ export default {
   created() {
     let msg = "您好，这里是东芝客服部，我是机器人小芝，很高兴为您服务。";
     this.pushMsgList(msg);
-    this.getrobotMsgJson();
+    this.getrobotMsg();
     this.checkText();
   },
   mounted() {
@@ -270,76 +284,73 @@ export default {
   },
   methods: {
     // 获取初始数据
-    async getrobotMsgJson() {
-      try {
-        if (robotMsgJson.code == "200") {
-          let list = await this._.cloneDeep(robotMsgJson.list);
-          for (let i = 0; i < list.length; i++) {
-            list[i].subList = this._.flatten(list[i].subList);
-          }
-          this.pushMsgList(list);
-        }
-      } catch (error) {
-        console.log("Request Failed", error);
+    async getrobotMsg() {
+      let data = await this.$axios.get(
+        "/CallCenter/commonquestion/getQuestionList"
+      );
+      console.log(data);
+      let list = this._.cloneDeep(data.list);
+      for (let i = 0; i < list.length; i++) {
+        list[i].subList = this._.flatten(list[i].subList);
       }
+      this.pushMsgList(list);
     },
 
     //树形控件点击事件
-    handleNodeClick(data) {
-      // console.log(data);
-      if (data.parentId) {
-        let msg = data.comQuestion;
-        let msgs = data.comAnswer;
+    async handleNodeClick(mag) {
+      if (mag.parentId) {
         let aa = true;
-        this.pushMsgList(msg, aa);
-        this.pushMsgList(msgs);
+        this.pushMsgList(mag.comQuestion, aa);
+        let param = {
+          id: mag.id,
+        };
+        let data = await this.$axios.post(
+          "/CallCenter/dialogue/sendCommonQuestion",
+          param
+        );
+        this.pushMsgList(data.answer);
       }
     },
 
     //发送按钮事件
-    sendSelfMsg() {
+    async sendSelfMsg() {
+      let param = {
+        text: this.input,
+      };
       let msg = this.input;
       let aa = true;
       this.pushMsgList(msg, aa);
-      this.getNowTime();
       this.input = "";
+      let data = await this.$axios.post(
+        "/CallCenter/dialogue/sendMessage",
+        param
+      );
+      console.log(data);
+      this.pushMsgList(data.answer);
     },
 
     //添加信息
     pushMsgList(msg, bar) {
       let buer = bar | false;
       let msgs = msg;
-      // console.log(msg);
-      this.getNowTime();
       this.msgList.push({
         message: msgs,
         isSelf: buer,
       });
     },
 
-    //获取当前时间
-    getNowTime() {
-      let now = new Date();
-      let hour = now.getHours(); //获取当前小时数(0-23)
-      let minute = now.getMinutes(); //获取当前分钟数(0-59)
-      let second = now.getSeconds(); //获取当前秒数(0-59)
-      this.nowTime =
-        this.fillZero(hour) +
-        ":" +
-        this.fillZero(minute) +
-        ":" +
-        this.fillZero(second);
-      Object.freeze(this.nowTime);
-    },
-
-    fillZero(str) {
-      var realNum;
-      if (str < 10) {
-        realNum = "0" + str;
-      } else {
-        realNum = str;
+    //点击评价
+    async sendRate(val) {
+      if (val > 0) {
+        let param = {
+          evaluate: val,
+        };
+        let data = await this.$axios.post(
+          "/CallCenter/evaluation/userEvaluate",
+          param
+        );
+        console.log(data);
       }
-      return realNum;
     },
 
     //判断输入是否为空格或全为空格
@@ -366,22 +377,41 @@ export default {
     },
 
     // 提交表单
-    submitForm(formName, val) {
-      this.$refs[formName].validate((valid) => {
-        if (valid) {
-          console.log(this.ruleForm);
-          alert(val);
+    async submitForm(formName) {
+      if (this.validform(formName)) {
+        let fs = this.uploadFile();
+        let data = {
+          files: fs,
+          mgEmail: this.ruleForm.email,
+          mgName: this.ruleForm.mgName,
+          mgTel: this.ruleForm.num,
+        };
+        let res = await this.$axios.post(
+          "/CallCenter/message/addMessage",
+          data
+        );
+        console.log(res);
+      }
 
-          // this.$refs[formName].resetFields();
-          // this.$refs.uploadMutiple.submit();
-          // this.dialogVisible = false;
-        } else {
-          // console.log("error submit!!");
-          // return false;
-        }
-      });
+      //   // this.$refs[formName].resetFields();
+      //   // this.$refs.uploadMutiple.submit();
+      //   // this.dialogVisible = false;
+      // },
       // this.$refs.uploadMutiple.submit();
     },
+
+    //触发表单规则
+    validform(formName) {
+      this.$refs[formName].validate((valid) => {
+        if (valid) {
+          return true;
+        } else {
+          console.log("error submit!!");
+          return false;
+        }
+      });
+    },
+
     // 取消表单
     cancelForm(formName) {
       this.$refs[formName].resetFields();
@@ -407,17 +437,17 @@ export default {
     },
     //改变文件列表
     handleChange(file, fileList) {
-      this.checkText(3);
       this.fileList = fileList;
       this.checkType();
       // console.log(this.fileList);
     },
     //检查上传图片
     checkType() {
-      const whiteList = ["image/png", "image/jpg", "image/gif"];
+      const whiteList = ["png", "jpg", "gif"];
       for (const i of this.fileList) {
-        console.log(i.name.substring(i.name.lastIndexOf(".") + 1));
-        let extension = i.raw.type;
+        // console.log(i.name.substring(i.name.lastIndexOf(".") + 1));
+        let extension = i.name.substring(i.name.lastIndexOf(".") + 1);
+        // console.log(extension);
         let size = i.size / 1024 / 1024 < 2;
         if (whiteList.indexOf(extension) === -1) {
           this.checkText(0);
@@ -435,7 +465,7 @@ export default {
     },
     //检查文件格式不让没通过检测的添加
     checkImg(i) {
-      if (i) {
+      if (i > 0) {
         if (this.fileList.indexOf(i) !== -1) {
           this.fileList.splice(this.fileList.indexOf(i), 1);
         }
@@ -465,20 +495,35 @@ export default {
           break;
       }
     },
+
     //文件超出个数限制时的钩子
     exceed() {
       this.checkText(2);
       return false;
     },
 
+    //上传图片
+    //参数必须是param，才能获取到内容
+    uploadFile(param) {
+      try {
+        // 获取上传的文件名
+        //发送请求的参数格式为FormData
+        let fd = new FormData(); // 新建一个FormData()对象，这就相当于你新建了一个表单
+        let file = fd.append("file", param.file);
+        return file; // 将文件保存到formData对象中
+      } catch (e) {
+        console.log(e);
+      }
+    },
+
     //对话框事件
     // handleClose(done) {
 
     // },
-  },
 
-  // 销毁时
-  beforeDestroy() {},
+    // 销毁时
+    beforeDestroy() {},
+  },
 };
 </script>
 
