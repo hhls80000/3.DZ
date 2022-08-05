@@ -298,6 +298,7 @@ export default {
     });
   },
   methods: {
+    // https://www.toshiba.com.cn/user.html 用户须知
     // 获取初始数据
     async getrobotMsg() {
       let data = await this.$axios.get(
