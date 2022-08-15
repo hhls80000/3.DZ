@@ -28,17 +28,17 @@
               <p :class="'send' + (item.isSelf ? 'Right' : 'Left')">
                 {{ item.isSelf ? " " : "东芝客服-小芝" }}
                 <span v-once>{{
-                  (nowTime.getHours() >= 10
-                    ? nowTime.getHours()
-                    : "0" + nowTime.getHours()) +
+                  (new Date().getHours() >= 10
+                    ? new Date().getHours()
+                    : "0" + new Date().getHours()) +
                   ":" +
-                  (nowTime.getMinutes() >= 10
-                    ? nowTime.getMinutes()
-                    : "0" + nowTime.getMinutes()) +
+                  (new Date().getMinutes() >= 10
+                    ? new Date().getMinutes()
+                    : "0" + new Date().getMinutes()) +
                   ":" +
-                  (nowTime.getSeconds() >= 10
-                    ? nowTime.getSeconds()
-                    : "0" + nowTime.getSeconds())
+                  (new Date().getSeconds() >= 10
+                    ? new Date().getSeconds()
+                    : "0" + new Date().getSeconds())
                 }}</span>
               </p>
               <span
@@ -88,19 +88,19 @@
                 :rules="rules"
                 ref="ruleForm"
               >
-                <el-form-item label="姓名" prop="name">
+                <el-form-item label="姓名" prop="name" class="labelName">
                   <el-input
                     v-model="ruleForm.name"
                     placeholder="姓名"
                   ></el-input>
                 </el-form-item>
-                <el-form-item label="联系电话" prop="num">
+                <el-form-item label="联系电话" prop="num" class="labelName">
                   <el-input
                     @input="clearRule()"
                     v-model="ruleForm.num"
                     placeholder="手机号或者固定电话号码"
                   ></el-input
-                  ><span>联系电话和邮箱，至少填写一种</span>
+                  ><span class="namTip">(联系电话和邮箱，至少填写一种)</span>
                 </el-form-item>
                 <el-form-item label="邮箱地址" prop="email">
                   <el-input
@@ -136,21 +136,33 @@
                     <div slot="tip" class="el-upload__tip" v-html="tip"></div>
                   </el-upload>
                 </el-form-item>
-                <el-form-item label="验证码">
-                  <input
-                    type="text"
-                    id="Txtidcode"
-                    class="txtVerification"
-                    auto-complete="off"
-                    placeholder="验证码"
-                  />
-                  <div id="auth_code" @click="toggleCode"></div>
+                <el-form-item
+                  label="验证码"
+                  class="identifyCode"
+                  prop="identifyCodeValue"
+                >
+                  <el-input
+                    v-model="ruleForm.identifyCodeValue"
+                    placeholder="不区分大小写"
+                  ></el-input>
+                  <div class="getCode" @click="refreshCode()">
+                    <s-identify :identifyCode="identifyCode"></s-identify>
+                  </div>
+                </el-form-item>
+                <el-form-item prop="checked">
+                  <el-checkbox v-model="ruleForm.checked"
+                    >我已阅读《<a href="https://www.toshiba.com.cn/user.html"
+                      >个人信息保护政策</a
+                    >》</el-checkbox
+                  >
                 </el-form-item>
               </el-form>
             </div>
             <span slot="footer" class="dialog-footer">
               <el-button @click="cancelForm('ruleForm')">取 消</el-button>
-              <el-button type="primary" @click="submitForm('ruleForm')"
+              <el-button
+                type="primary"
+                @click="submitForm('ruleForm', ruleForm)"
                 >提 交</el-button
               >
             </span>
@@ -186,13 +198,15 @@
 </template>
 
 <script>
-import GVerify from "./assets/js/GVerify.js";
+import SIdentify from "@/components/SIdentify.vue";
 export default {
   name: "App",
+  components: { SIdentify },
   data() {
     return {
-      GVerifyvalue: "",
-      verifyCode: "",
+      identifyCode: "",
+      checkCode: "",
+      identifyCodes: "0123456789abcdwerwshdjeJKDHRJHKOOPLMKQ", //绘制的随机数
       disabled: true,
       limit: 3,
       autoUpload: false,
@@ -207,7 +221,6 @@ export default {
       input: "",
       dialogVisible: false,
       formLabelWidth: "120px",
-      nowTime: new Date(),
       texts: ["非常不满意", "不满意", "一般满意", "满意", "非常满意"],
       rateValue: null,
       labelPosition: "right",
@@ -216,6 +229,8 @@ export default {
         num: "",
         desc: "",
         email: "",
+        checked: "",
+        identifyCodeValue: "",
       },
       fileList: [],
       rules: {
@@ -258,31 +273,46 @@ export default {
         desc: [
           { required: true, message: "请输入问题", trigger: "blur" },
           {
+            trigger: "blur",
+          },
+        ],
+        identifyCodeValue: [
+          { required: true, message: "请输验证码", trigger: "blur" },
+          {
+            validator: this.validatorVal,
+            trigger: "blur",
+          },
+        ],
+        checked: [
+          {
             validator: function (rule, value, callback) {
-              if (!value.trim()) {
-                callback(new Error("请输入问题"));
+              console.log(value);
+              if (value == false) {
+                callback(new Error("请勾选我已阅读"));
               } else {
                 callback();
               }
             },
-            trigger: "blur",
+            trigger: "",
           },
         ],
       },
     };
   },
-  watch: {},
+  watch: {
+    identifyCode() {
+      var that = this;
+      that.checkCode = that.identifyCode.toLowerCase();
+    },
+  },
   created() {
     let msg = "您好，这里是东芝客服部，我是机器人小芝，很高兴为您服务。";
     this.pushMsgList(msg);
     this.getrobotMsg();
     this.checkText();
+    this.refreshCode();
   },
-  mounted() {
-    this.verifyCode = new GVerify("auth_code");
-    // $.idcode.setCode();
-    // console.log(document.querySelector('.content').innerHTML);
-  },
+  mounted() {},
   //在生命周期updated时，改变并且要在页面重新渲染完成之后
   updated() {
     //  另有一条需要特别注意的地方，注意查看信息调用的接口刷新频率，在接口刷新时，消息列表也会随之刷新，并伴随产生一个小bug就是如果想往回翻看聊天记录的话，接口一刷新进度条就会回到最底部！！！！！！！！！！！！！！！！！！！！！！！！
@@ -294,7 +324,6 @@ export default {
         this.disabled = true;
       }
       this.$refs.record.scrollTop = this.$refs.record.scrollHeight;
-      // this.handleChange()
     });
   },
   methods: {
@@ -304,7 +333,6 @@ export default {
       let data = await this.$axios.get(
         "/CallCenter/commonquestion/getQuestionList"
       );
-      console.log(data);
       let list = this._.cloneDeep(data.list);
       for (let i = 0; i < list.length; i++) {
         list[i].subList = this._.flatten(list[i].subList);
@@ -341,7 +369,6 @@ export default {
         "/CallCenter/dialogue/sendMessage",
         param
       );
-      console.log(data);
       this.pushMsgList(data.answer);
     },
 
@@ -392,43 +419,48 @@ export default {
       this.$refs.ruleForm.clearValidate("email");
     },
 
-    // 提交表单
-    async submitForm() {
-      if (this.validform(this.ruleForm)) {
-        let res = await this.uploadFile();
-        if (res.code == 200) {
-          this.$refs[this.ruleForm].resetFields();
-        }
+    //验证码验证
+    validatorVal(rule, value, callback) {
+      if (value.toLowerCase() === this.checkCode) {
+        callback();
+      } else {
+        callback(new Error("请输入正确的验证码"));
       }
-      //   // this.$refs[formName].resetFields();
-      //   // this.$refs.uploadMutiple.submit();
-      //   // this.dialogVisible = false;
-      // },
-      // this.$refs.uploadMutiple.submit();
     },
 
-    //触发表单规则
-    validform(formName) {
+    // 提交表单
+    submitForm(formName, form) {
+      console.log(form);
       this.$refs[formName].validate((valid) => {
         if (valid) {
-          return true;
+          (async () => {
+            console.log(form);
+            console.log(this.ruleForm);
+            let res = await this.uploadFile(form);
+            if (res == 200) {
+              console.log("ok!");
+              this.resetForm(formName);
+            }
+          })();
         } else {
-          console.log("error submit!!");
+          console.log("error!!");
           return false;
         }
       });
     },
 
-    // 取消表单
-    cancelForm(formName) {
-      this.$refs[formName].resetFields();
-      this.$refs.upload.clearFiles();
-      this.dialogVisible = false;
+    resetForm(form) {
+      setTimeout(() => {
+        this.fileList = [];
+        this.$refs[form].resetFields();
+        this.dialogVisible = false;
+      }, 1000);
     },
-    //上传之前
-    beforeUpload() {
-      // this.checkText();
-      // return this.handleChange();
+
+    // 取消表单
+    cancelForm(form) {
+      this.resetForm(form);
+      this.$refs.upload.clearFiles();
     },
 
     //删除文件列表
@@ -437,7 +469,6 @@ export default {
       if (this.fileList.length == 0) {
         this.checkText();
       }
-      // this.checkText(3);
     },
     //文件列表
     handlePreview(file) {
@@ -511,17 +542,18 @@ export default {
       return false;
     },
 
-    //上传图片
+    //上传
     //参数必须是param，才能获取到内容
-    async uploadFile() {
+    async uploadFile(form) {
+      console.log(form, 1111);
       let formData = new FormData(); // 新建一个FormData()对象，这就相当于你新建了一个表单
-      this.fileList.forEach((item) => {
+      Array.from(form).forEach((item) => {
         formData.append("files", item.raw);
       });
-      formData.append("mgEmail", this.ruleForm.email);
-      formData.append("mgName", this.ruleForm.name);
-      formData.append("mgTel", this.ruleForm.num);
-      formData.append("mgContent", this.ruleForm.desc);
+      formData.append("mgEmail", form.email);
+      formData.append("mgName", form.name);
+      formData.append("mgTel", form.num);
+      formData.append("mgContent", form.desc);
 
       let res = await this.$axios({
         url: "/CallCenter/message/addMessage",
@@ -531,21 +563,23 @@ export default {
           "Content-Type": "multipart/form-data",
         },
       });
-      return res;
+      return res.code;
     },
     //验证码
-    toggleCode() {
-      // if (this.verifyCode.validate(this.GVerifyvalue)) {
-      // } else {
-      //   this.verifyCode.refresh();
-      //   return;
-      // }
-      // $.idcode.setCode();
+    refreshCode() {
+      this.identifyCode = "";
+      this.makeCode(this.identifyCodes, 4);
     },
-    //对话框事件
-    // handleClose(done) {
-
-    // },
+    randomNum(min, max) {
+      max = max + 1;
+      return Math.floor(Math.random() * (max - min) + min);
+    },
+    // 随机生成验证码字符串
+    makeCode(data, len) {
+      for (let i = 0; i < len; i++) {
+        this.identifyCode += data[this.randomNum(0, data.length - 1)];
+      }
+    },
 
     // 销毁时
     beforeDestroy() {},
@@ -554,6 +588,14 @@ export default {
 </script>
 
 <style>
+a {
+  text-decoration: none;
+}
+
+a:visited {
+  text-decoration: none;
+}
+
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -786,6 +828,20 @@ export default {
 #main .footer .messageBoard .el-textarea__inner .el-textarea__inner:focus {
   border: none;
 }
+.identifyCode .el-form-item__content {
+  line-height: 60px;
+}
+
+.el-form-item__content .getCode {
+  display: inline-block;
+  width: 120px;
+  height: 40px;
+  line-height: 40px;
+  margin-left: 30px;
+  transform: translate(0px, 15px);
+  /* border: #fff 5px solid; */
+  /* background-color: #ddd; */
+}
 
 ::-webkit-scrollbar {
   width: 8px;
@@ -804,11 +860,22 @@ export default {
 }
 
 .el-dialog__wrapper .el-input {
-  width: 50%;
+  width: 60%;
+}
+.identifyCode .el-input {
+  width: 20%;
 }
 
-.el-dialog__wrapper .el-textarea {
-  /* width: 70%; */
+.namTip {
+  margin-left: 20px;
+  color: rgb(162, 162, 162);
+}
+
+.labelName .el-input {
+  width: 40%;
+}
+.el-checkbox a {
+  color: rgb(44, 146, 255);
 }
 
 .el-textarea__inner {
@@ -851,6 +918,10 @@ export default {
   margin-right: 20px;
 }
 
+.el-dialog {
+  background-color: rgb(239, 239, 239);
+}
+
 .el-dialog__header {
   background-color: #4b7edc;
 }
@@ -886,87 +957,10 @@ export default {
 .el-icon-close:before {
   color: rgb(177, 177, 177);
 }
-</style>
 
-<style>
-@charset "utf-8";
-/* track base Css */
-
-#ehong-code-input {
-  width: 42px;
-  letter-spacing: 2px;
-  margin: 0px 8px 0px 0px;
-}
-.ehong-idcode-val {
+.el-checkbox-button__inner,
+.el-checkbox__input {
   position: relative;
-  padding: 8px;
-  top: 0px;
-  *top: -3px;
-  letter-spacing: 4px;
-  display: inline;
-  cursor: pointer;
-  font-size: 16px;
-  font-family: "Courier New", Courier, monospace;
-  text-decoration: none;
-  font-weight: bold;
-  border-radius: 4px;
-  -moz-user-select: none;
-  -khtml-user-select: none;
-  user-select: none;
-}
-.ehong-idcode-val0 {
-  border: solid 1px #a4cded;
-  background-color: #ecfafb;
-}
-
-.ehong-idcode-val1 {
-  border: solid 1px #a4cded;
-  background-color: #fcefcf;
-}
-.ehong-idcode-val2 {
-  border: solid 1px #6c9;
-  background-color: #d0f0df;
-}
-.ehong-idcode-val3 {
-  border: solid 1px #6c9;
-  background-color: #dcddd8;
-}
-.ehong-idcode-val4 {
-  border: solid 1px #6c9;
-  background-color: #f1deff;
-}
-.ehong-idcode-val5 {
-  border: solid 1px #6c9;
-  background-color: #ace1f1;
-}
-.ehong-code-val-tip {
-  font-size: 12px;
-  color: #1098ec;
-  top: 0px;
-  *top: -3px;
-  position: relative;
-  margin: 0px 0px 0px 4px;
-  cursor: pointer;
-}
-.txtVerification {
-  width: 260px;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-  background-color: #fff;
-  background-image: none;
-  border-radius: 4px;
-  border: 1px solid #bfcbd9;
-  box-sizing: border-box;
-  color: #1f2d3d;
-  font-size: inherit;
-  height: 36px;
-  line-height: 1;
-  outline: 0;
-  padding: 3px 10px;
-  transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
-}
-.txtVerification:focus {
-  border-color: #20a0ff;
+  left: -35px;
 }
 </style>
