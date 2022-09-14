@@ -1,85 +1,19 @@
-<template>
-    <el-dialog :title="title" :visible.sync="dialogVisible" width="30%" @close="changeClose" center>
-        <keep-alive> <component :is="assembly" /> </keep-alive>
-        <span slot="footer" class="dialog-footer">
-            <el-button @click="dialogVisible = false">关闭</el-button>
-        </span>
-    </el-dialog>
-</template>
-
-<script>
-import LmgList from './ImgList.vue';
-import HandleMsg from './HandleMsg.vue';
-import ContentDetails from './ContentDetails.vue';
-import LookMsgList from './LookMsgList.vue';
-export default {
-    name: 'Dialog',
-    components: {
-        LmgList,
-        HandleMsg,
-        ContentDetails,
-        LookMsgList
-    },
-    props: {
-        dialogShow: {
-            type: Boolean,
-            default: false
-        },
-        dialogTitle: {
-            type: String,
-            default: ''
-        },
-        dialogIs: {
-            type: String,
-            default: ''
-        }
-    },
-    data() {
-        return {
-            dialogVisible: this.dialogShow,
-            assembly: this.dialogIs,
-            title: this.dialogTitle
-        };
-    },
-    watch: {
-        dialogShow(val) {
-            this.dialogVisible = val;
-        },
-        dialogTitle(val) {
-            console.log(val);
-            this.title = val;
-        },
-        dialogIs(val) {
-            this.assembly = val;
-        }
-    },
-
-    created() {},
-    methods: {
-        getUrlList(type) {
-            console.log(type);
-            switch (type) {
-                case type == '附件':
-                    this.assembly = 'LmgList';
-                    break;
-                case type == '处理':
-                    this.assembly = 'HandleMsg';
-                    break;
-                case type == '问题描述':
-                    this.assembly = 'ContentDetails';
-                    break;
-                case type == '查看消息':
-                    this.assembly = 'LookMsgList';
-                    break;
-                default:
-                    break;
-            }
-        },
-        changeClose() {
-            this.$emit('dialogClose', false);
-        }
-    }
-};
-</script>
-
-<style scoped></style>
+  build: {
+    env: require('./prod.env'),
+    index: path.resolve(__dirname, '../dist/index.html'),
+    assetsRoot: path.resolve(__dirname, '../dist'),
+    assetsSubDirectory: 'static',
+    assetsPublicPath: './',
+    productionSourceMap: false,
+    // Gzip off by default as many popular static hosts such as
+    // Surge or Netlify already gzip all static assets for you.
+    // Before setting to `true`, make sure to:
+    // npm install --save-dev compression-webpack-plugin
+    productionGzip: false,
+    productionGzipExtensions: ['js', 'css'],
+    // Run the build command with an extra argument to
+    // View the bundle analyzer report after build finishes:
+    // `npm run build --report`
+    // Set to `true` or `false` to always turn it on or off
+    bundleAnalyzerReport: process.env.npm_config_report
+  },
