@@ -150,7 +150,6 @@
                     },
                     yAxis: {
                         type: 'value',
-
                     },
                     series: [
                         {
@@ -175,6 +174,7 @@
                 this.myChartOne()
                 this.myChartTwo()
                 setTimeout(() => {
+                    // this.getAllActua()
                     this.myChartOne()
                     this.myChartTwo()
                 }, 200);
@@ -194,7 +194,8 @@
                 // this.da.series[2].data = this.thisAllDate
                 // this.da.series[3].data = this.getOne
                 // this.da.series[4].data = this.getTwo
-                // this.da.series[5].data = this.getThree
+                this.data.series.data = this.thisStableDate
+                console.log(this.thisStableDate);
                 myChart.setOption(this.data);
             },
             myChartTwo() {
@@ -234,6 +235,7 @@
                         this.getRelative()
                         this.getStable()
                         console.log(this.thisRelativeDate);
+                        console.log(this.thisStableDate);
                     }
                 }
 
@@ -304,8 +306,22 @@
                 this.thisStableDate.push(this.thisAllDate['r05_051'])
                 this.thisStableDate.push(this.thisAllDate['r052_053'])
                 this.thisStableDate.push(this.thisAllDate['r053_054'])
-
-
+                this.thisStableDate.push(this.thisAllDate['r054_055'])
+                this.thisStableDate.push(this.thisAllDate['r055_056'])
+                this.thisStableDate.push(this.thisAllDate['r056_057'])
+                this.thisStableDate.push(this.thisAllDate['r057_058'])
+                this.thisStableDate.push(this.thisAllDate['r058_059'])
+                this.thisStableDate.push(this.thisAllDate['r059_06'])
+                this.thisStableDate.push(this.thisAllDate['r06_061'])
+                this.thisStableDate.push(this.thisAllDate['r061_062'])
+                this.thisStableDate.push(this.thisAllDate['r062_063'])
+                this.thisStableDate.push(this.thisAllDate['r063_064'])
+                this.thisStableDate.push(this.thisAllDate['r064_065'])
+                // this.thisStableDate.push(this.thisAllDate['r065_066'])
+                // this.thisStableDate.push(this.thisAllDate['r066_067'])
+                // this.thisStableDate.push(this.thisAllDate['r067_068'])
+                // this.thisStableDate.push(this.thisAllDate['r068_069'])
+                // this.thisStableDate.push(this.thisAllDate['r069_07'])
             },
             getShortData(data) {
                 this.getAllTime.forEach((item, index) => {
